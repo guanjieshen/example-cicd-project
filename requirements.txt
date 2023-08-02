@@ -1,0 +1,5 @@
+pyyaml
+dbx==0.8.14
+pyspark==3.3.0
+chispa==0.9.2
+cloudprice

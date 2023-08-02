@@ -1,0 +1,65 @@
+custom:
+  #TODO: Adjust the cluster
+  basic-cluster-props: &basic-cluster-props
+    spark_version: "11.3.x-scala2.12"
+    runtime_engine: PHOTON
+    spark_conf:
+      spark.databricks.delta.preview.enabled: 'true'
+
+  basic-static-cluster: &basic-static-cluster
+    new_cluster:
+      <<: *basic-cluster-props
+      num_workers: 1
+      node_type_id: "Standard_E8_v3"
+
+# please note that we're using FUSE reference for config file, hence we're going to load this file using its local FS path
+environments:
+  default:
+    jobs:
+        #TODO: Change the name of this job
+      - name: "databricks-notebook-cicd-github-actions-dev"
+
+        #TODO: Change this to the relevant repository
+        git_source:
+          git_url: https://github.com/guanjieshen/databricks-notebook-cicd-github-actions.git
+          git_provider: "GitHub"
+          git_branch: "dev"
+
+        #TODO: Set  tagging
+        tags:
+          owner: "guanjie.shen@databricks.com"
+          pipeline_type: "Batch"
+          environment: "Development"
+          domain: "Human Resources"
+
+        #OPTIONAL: Alters for skipped runs
+        no_alert_for_skipped_runs: false
+
+        #TODO: Change the following to the set the appropriate owners
+        access_control_list:
+          - user_name: "guanjie.shen@databricks.com"
+            permission_level: "IS_OWNER"
+          - group_name: "users"
+            permission_level: "CAN_VIEW"
+
+        job_clusters:
+          - job_cluster_key: "basic-static-cluster"
+            <<: *basic-static-cluster
+
+        tasks:
+          - task_key: "task-01"
+            job_cluster_key: "basic-static-cluster"
+            # Add dependent libraries
+            max_retries: 1
+            notebook_task:
+              notebook_path: "notebooks/create_schema_job"
+              base_parameters: {"database_name" : "guanjie_db_dev"}
+            min_retry_interval_millis: 900000
+
+          - task_key: "task-02"
+            job_cluster_key: "basic-static-cluster"
+            max_retries: 1
+            notebook_task:
+              notebook_path: "notebooks/batch_job"
+              base_parameters: {"source" : "dbfs:/databricks-datasets/learning-spark-v2/people/people-10m.delta", "sink": "guanjie_db_dev.people10m" }
+            min_retry_interval_millis: 900000
